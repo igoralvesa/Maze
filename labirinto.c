@@ -5,7 +5,7 @@
 #include <time.h>
 #include <dirent.h>
 
-#define MAX 100
+#define MAX 501
 #define WALL '#'
 #define FREE ' '
 #define START 'S'
@@ -14,7 +14,7 @@
 typedef struct Node
 {
     int x, y;
-    int g, h, f;
+    int g, h, f; 
     struct Node *parent;
 } Node;
 
@@ -109,17 +109,8 @@ void read_maze(const char *filename)
     fclose(file);
 }
 
-void reconstruct_path(Node *node, const char *jsonFile)
+void reconstruct_path(Node *node)
 {
-    FILE *json = fopen(jsonFile, "w");
-    if (!json)
-    {
-        perror("Erro ao criar JSON");
-        return;
-    }
-
-    fprintf(json, "{\n  \"caminho\": [\n");
-
     Node *path[MAX * MAX];
     int count = 0;
 
@@ -130,17 +121,9 @@ void reconstruct_path(Node *node, const char *jsonFile)
         path[count++] = node;
         node = node->parent;
     }
-
-    for (int i = count - 1; i >= 0; i--)
-    {
-        fprintf(json, "    {\"x\": %d, \"y\": %d}%s\n", path[i]->x, path[i]->y, (i > 0 ? "," : ""));
-    }
-
-    fprintf(json, "  ]\n}\n");
-    fclose(json);
 }
 
-void a_star(const char *jsonFile)
+void a_star()
 {
     add_to_open(startNode);
 
@@ -153,7 +136,7 @@ void a_star(const char *jsonFile)
 
         if (current->x == endNode->x && current->y == endNode->y)
         {
-            reconstruct_path(current, jsonFile);
+            reconstruct_path(current);
             return;
         }
 
@@ -212,21 +195,22 @@ void process_all_inputs()
             strncpy(baseName, entry->d_name, strlen(entry->d_name) - 4);
             baseName[strlen(entry->d_name) - 4] = '\0';
 
-            sprintf(inputPath, "inputs/%s", entry->d_name);
-            sprintf(jsonPath, "outputs/%s.json", baseName);
-            sprintf(txtPath, "outputs/%s.txt", baseName);
+            sprintf(inputPath,"inputs/%s", entry->d_name);
+            sprintf(jsonPath,"outputs/%s.json", baseName);
+            sprintf(txtPath,"outputs/%s.txt", baseName);
 
             printf("\nProcessando: %s\n", inputPath);
 
-            clock_t start_time = clock();
             read_maze(inputPath);
-            a_star(jsonPath);
-            save_maze_to_file(txtPath);
+            clock_t start_time = clock();
+            a_star();
             clock_t end_time = clock();
-
+            save_maze_to_file(txtPath);
+                
             double elapsed = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+            printf("Tempo: %.8f segundos\n", elapsed);
             elapsed *= 1000; // Convert to milliseconds
-            printf("Tempo: %.4f ms\n", elapsed);
+            printf("Tempo: %.6f ms\n", elapsed);
         }
     }
 

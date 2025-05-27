@@ -1,23 +1,25 @@
 import subprocess
 import time
+import os
 
 
 def solve_maze(labyrinth: str) -> float:
     # Compila o labirinto.c
-    compile = subprocess.run(["gcc", "labirinto.c", "-o", "labirinto", "-O2"])
-    if compile.returncode != 0:
-        raise RuntimeError("Erro ao compilar labirinto.c")
+    # compile = subprocess.run(["gcc", "labirinto.c", "-o", "labirinto", "-O2"])
+ 
 
     # Executa o programa compilado
     start = time.time()
-    execute = subprocess.run(["./labirinto"])
+    #execute = subprocess.run(["./labirinto"])
+    os.system('./labirinto')
     end = time.time()
 
-    if execute.returncode != 0:
-        raise RuntimeError("Erro ao executar ./labirinto")
+    
 
     # Retorna o tempo em milissegundos
-    return (end - start) * 1000
+    teste = (end - start) * 1000
+    print(teste)
+    return teste
 
 
 if __name__ == "__main__":
