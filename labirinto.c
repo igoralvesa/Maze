@@ -24,8 +24,7 @@ int visited[MAX][MAX];
 
 Node *startNode = NULL, *endNode = NULL;
 
-Node *create_node(int x, int y, int g, int h, Node *parent)
-{
+Node *create_node(int x, int y, int g, int h, Node *parent){
     Node *node = malloc(sizeof(Node));
     node->x = x;
     node->y = y;
@@ -36,13 +35,11 @@ Node *create_node(int x, int y, int g, int h, Node *parent)
     return node;
 }
 
-int heuristic(int x, int y)
-{
+int heuristic(int x, int y){
     return abs(endNode->x - x) + abs(endNode->y - y);
 }
 
-int is_valid(int x, int y)
-{
+int is_valid(int x, int y){
     return x >= 0 && y >= 0 && x < rows && y < cols &&
            maze[x][y] != WALL && !visited[x][y];
 }
@@ -51,17 +48,24 @@ Node *openList[MAX * MAX];
 int openSize = 0;
 
 void add_to_open(Node *node){
-    for (int i = 0; i < openSize; i++)
-    {
-        if (openList[i]->x == node->x && openList[i]->y == node->y &&
-            openList[i]->f <= node->f)
-        {
-            free(node);
-            return;
+    for (int i = 0; i < openSize; i++){
+        if (openList[i]->x == node->x && openList[i]->y == node->y){
+            if (openList[i]->f <= node->f){
+                free(node);
+                return;
+            }else{
+                openList[i]->g = node->g;
+                openList[i]->h = node->h;
+                openList[i]->f = node->f;
+                openList[i]->parent = node->parent;
+                free(node);
+                return;
+            }
         }
     }
     openList[openSize++] = node;
 }
+
 
 Node *get_lowest_f_node(){
     int minIndex = 0;
