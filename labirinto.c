@@ -1,63 +1,74 @@
+// labirinto.c
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <dirent.h>
+#include <limits.h>
 
-#define MAX 501
-#define WALL '#'
-#define FREE ' '
+#define MAX   501
+#define WALL  '#'
+#define FREE  ' '
 #define START 'S'
-#define END 'E'
+#define END   'E'
 
-typedef struct Node
-{
-    int x, y;
-    int g, h, f; 
+typedef struct Node {
+    int x, y;           // posição no labirinto
+    int g, h, f;        // custos g(n), h(n) e f = g + h
     struct Node *parent;
 } Node;
 
-int rows, cols;
-char maze[MAX][MAX];
-int visited[MAX][MAX];
+// —————————————————————————————————————————————————————
+//  Globals do A*
+// —————————————————————————————————————————————————————
+static int rows, cols;
+static char maze[MAX][MAX];
+static int visited[MAX][MAX];
+static Node *startNode, *endNode;
+static Node *openList[MAX * MAX];
+static int openSize;
 
-Node *startNode = NULL, *endNode = NULL;
+// —————————————————————————————————————————————————————
+//  Funções auxiliares
+// —————————————————————————————————————————————————————
 
-Node *create_node(int x, int y, int g, int h, Node *parent){
-    Node *node = malloc(sizeof(Node));
-    node->x = x;
-    node->y = y;
-    node->g = g;
-    node->h = h;
-    node->f = g + h;
-    node->parent = parent;
-    return node;
+// Cria um novo nó
+static Node *create_node(int x, int y, int g, int h, Node *parent) {
+    Node *n = malloc(sizeof(Node));
+    if (!n) { perror("malloc"); exit(EXIT_FAILURE); }
+    n->x = x; n->y = y;
+    n->g = g; n->h = h; n->f = g + h;
+    n->parent = parent;
+    return n;
 }
 
-int heuristic(int x, int y){
+// Heurística de Manhattan
+static int heuristic(int x, int y) {
     return abs(endNode->x - x) + abs(endNode->y - y);
 }
 
-int is_valid(int x, int y){
-    return x >= 0 && y >= 0 && x < rows && y < cols &&
-           maze[x][y] != WALL && !visited[x][y];
+// Verifica se posição (x,y) é válida para explorar
+static int is_valid(int x, int y) {
+    return x >= 0 && y >= 0 && x < rows && y < cols
+        && maze[x][y] != WALL
+        && !visited[x][y];
 }
 
-Node *openList[MAX * MAX];
-int openSize = 0;
-
-void add_to_open(Node *node){
-    for (int i = 0; i < openSize; i++){
-        if (openList[i]->x == node->x && openList[i]->y == node->y){
-            if (openList[i]->f <= node->f){
+// Adiciona nó à open list, mantendo o melhor f para cada posição
+static void add_to_open(Node *node) {
+    for (int i = 0; i < openSize; i++) {
+        Node *o = openList[i];
+        if (o->x == node->x && o->y == node->y) {
+            if (o->f <= node->f) {
                 free(node);
                 return;
-            }else{
-                openList[i]->g = node->g;
-                openList[i]->h = node->h;
-                openList[i]->f = node->f;
-                openList[i]->parent = node->parent;
+            } else {
+                // atualiza
+                o->g = node->g;
+                o->h = node->h;
+                o->f = node->f;
+                o->parent = node->parent;
                 free(node);
                 return;
             }
@@ -66,142 +77,114 @@ void add_to_open(Node *node){
     openList[openSize++] = node;
 }
 
-
-Node *get_lowest_f_node(){
-    int minIndex = 0;
-    for (int i = 1; i < openSize; i++){
-        if (openList[i]->f < openList[minIndex]->f)
-            minIndex = i;
+// Retira e retorna o nó de menor f da open list
+static Node *get_lowest_f_node(void) {
+    int best = 0;
+    for (int i = 1; i < openSize; i++) {
+        if (openList[i]->f < openList[best]->f)
+            best = i;
     }
-    Node *node = openList[minIndex];
-    openList[minIndex] = openList[--openSize];
-    return node;
+    Node *res = openList[best];
+    openList[best] = openList[--openSize];
+    return res;
 }
 
-void read_maze(const char *filename){
-    FILE *file = fopen(filename, "r");
-    if (!file){
-        perror("Erro ao abrir arquivo");
-        exit(1);
-    }
-    rows = 0;
-    cols = 0;
-    memset(visited, 0, sizeof(visited));
-    openSize = 0;
-    startNode = endNode = NULL;
-
-    while (fgets(maze[rows], MAX, file)){
-        maze[rows][strcspn(maze[rows], "\n")] = '\0';
-        int len = strlen(maze[rows]);
-        if (len > cols)
-            cols = len;
-        for (int j = 0; j < len; j++)
-        {
-            if (maze[rows][j] == START)
-                startNode = create_node(rows, j, 0, 0, NULL);
-            else if (maze[rows][j] == END)
-                endNode = create_node(rows, j, 0, 0, NULL);
-        }
-        rows++;
-    }
-    fclose(file);
-}
-
-void reconstruct_path(Node *node){
-    Node *path[MAX * MAX];
-    int count = 0;
-
-    while (node->parent){
+// Reconstrói o caminho quando o fim é alcançado
+static void reconstruct_path(Node *node) {
+    while (node->parent) {
         if (maze[node->x][node->y] == FREE)
             maze[node->x][node->y] = '.';
-        path[count++] = node;
         node = node->parent;
     }
 }
 
-void a_star(){
+// Implementação do A*
+static void a_star(void) {
+    // adiciona o ponto de início
     add_to_open(startNode);
 
-    int dx[] = {-1, 1, 0, 0};
-    int dy[] = {0, 0, -1, 1};
+    // offsets de vizinhança (N, S, W, E)
+    const int dx[4] = { -1,  1,  0,  0 };
+    const int dy[4] = {  0,  0, -1, +1 };
 
-    while (openSize > 0){
-        Node *current = get_lowest_f_node();
-
-        if (current->x == endNode->x && current->y == endNode->y){
-            reconstruct_path(current);
+    while (openSize > 0) {
+        Node *cur = get_lowest_f_node();
+        if (cur->x == endNode->x && cur->y == endNode->y) {
+            reconstruct_path(cur);
             return;
         }
+        visited[cur->x][cur->y] = 1;
 
-        visited[current->x][current->y] = 1;
-
-        for (int i = 0; i < 4; i++){
-            int nx = current->x + dx[i];
-            int ny = current->y + dy[i];
-
-            if (is_valid(nx, ny)){
-                int g = current->g + 1;
+        // expande vizinhos
+        for (int i = 0; i < 4; i++) {
+            int nx = cur->x + dx[i];
+            int ny = cur->y + dy[i];
+            if (is_valid(nx, ny)) {
+                int g = cur->g + 1;
                 int h = heuristic(nx, ny);
-                Node *neighbor = create_node(nx, ny, g, h, current);
-                add_to_open(neighbor);
+                Node *nbr = create_node(nx, ny, g, h, cur);
+                add_to_open(nbr);
             }
         }
     }
-
-    printf("Caminho não encontrado.\n");
+    // se esgotar sem encontrar caminho, nada faz — o labirinto fica inalterado
 }
 
-void save_maze_to_file(const char *filename){
-    FILE *file = fopen(filename, "w");
-    if (!file){
-        perror("Erro ao criar arquivo de saída");
-        return;
-    }
-    for (int i = 0; i < rows; i++){
-        fprintf(file, "%s\n", maze[i]);
-    }
-    fclose(file);
-}
+// —————————————————————————————————————————————————————
+//  API exposta para ctypes
+// —————————————————————————————————————————————————————
 
-void process_all_inputs(){
-    DIR *dir = opendir("inputs");
-    if (!dir){
-        perror("Erro ao abrir diretório inputs/");
-        exit(1);
-    }
+/**
+ * Recebe o labirinto como única string com linhas separadas por '\n',
+ * resolve o A* em memória (marca o caminho com '.') e devolve
+ * uma nova string malloc’ed com o labirinto resolvido
+ * (cada linha termina em '\n'). Caller deve free() o retorno.
+ */
+char *solve_maze_from_string(const char *labstr) {
+    // 1) limpa estado
+    memset(visited, 0, sizeof(visited));
+    openSize = 0;
+    startNode = endNode = NULL;
+    rows = cols = 0;
 
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL){
-        if (strstr(entry->d_name, ".txt")){
-            char inputPath[256], jsonPath[256], txtPath[256], baseName[100];
-
-            // Ex: maze1.txt → maze1
-            strncpy(baseName, entry->d_name, strlen(entry->d_name) - 4);
-            baseName[strlen(entry->d_name) - 4] = '\0';
-
-            sprintf(inputPath,"inputs/%s", entry->d_name);
-            sprintf(jsonPath,"outputs/%s.json", baseName);
-            sprintf(txtPath,"outputs/%s.txt", baseName);
-
-            printf("\nProcessando: %s\n", inputPath);
-
-            read_maze(inputPath);
-            clock_t start_time = clock();
-            a_star();
-            clock_t end_time = clock();
-            save_maze_to_file(txtPath);
-                
-            double elapsed = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-            printf("Tempo: %.8f segundos\n", elapsed);
-            elapsed *= 1000; // Convert to milliseconds
-            printf("Tempo: %.6f ms\n", elapsed);
+    // 2) “leitura” linha a linha de labstr
+    const char *p = labstr;
+    while (*p && rows < MAX) {
+        // conta comprimento até '\n' ou fim
+        int len = 0;
+        while (p[len] && p[len] != '\n') len++;
+        // copia para maze
+        memcpy(maze[rows], p, len);
+        maze[rows][len] = '\0';
+        // ajusta cols para a maior largura
+        if (len > cols) cols = len;
+        // procura START e END
+        for (int j = 0; j < len; j++) {
+            if (maze[rows][j] == START)
+                startNode = create_node(rows, j, 0, 0, NULL);
+            else if (maze[rows][j] == END)
+                endNode   = create_node(rows, j, 0, 0, NULL);
         }
+        rows++;
+        // avança além de '\n'
+        p += len + (p[len] == '\n' ? 1 : 0);
     }
 
-    closedir(dir);
-}
+    // 3) roda o A*
+    a_star();
 
-int main(){
-    process_all_inputs();
-    return 0;
+    // 4) constrói string de saída
+    size_t total = (size_t)rows * (cols + 1) + 1;
+    char *out = malloc(total);
+    if (!out) return NULL;
+    char *q = out;
+    for (int i = 0; i < rows; i++) {
+        int linelen = strlen(maze[i]);
+        memcpy(q, maze[i], linelen);
+        q += linelen;
+        *q++ = '\n';
+    }
+    *q = '\0';
+
+    return out;
 }
