@@ -1,4 +1,3 @@
-// labirinto.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -138,7 +137,7 @@ char *solve_maze_from_string(const char *labstr)
     startNode = endNode = NULL;
     rows = cols = 0;
 
-    // Lê string linha por linha
+    // Lê string do labirinto linha por linha
     const char *p = labstr;
     while (*p && rows < MAX)
     {
@@ -169,7 +168,7 @@ char *solve_maze_from_string(const char *labstr)
 
     a_star();
 
-    // Constrói string de retorno
+    // Constrói a string de retorno que será recebida pelo arquivo python
     size_t total = (rows * (cols + 1)) + 1;
     char *out = malloc(total);
     char *q = out;

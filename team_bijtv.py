@@ -2,14 +2,21 @@ import ctypes
 
 from datetime import datetime
 import json
+import platform
+
+# Comando para compilar o C:
+# gcc -O2 -fPIC -shared -o liblabyrinth.so labyrinth.c
 
 lib = ctypes.CDLL("./liblabyrinth.so")
 lib.solve_maze_from_string.argtypes = [ctypes.c_char_p]
 lib.solve_maze_from_string.restype = ctypes.c_void_p
 
-libc = ctypes.CDLL("libc.dylib")  # macOS
+if platform.system() == "Darwin": # macOS
+    libc = ctypes.CDLL("libc.dylib")
+else:                             # Linux
+    libc = ctypes.CDLL("libc.so.6") 
+    
 libc.free.argtypes = [ctypes.c_void_p]
-
 
 def solve_maze(labyrinth: str) -> float:
     """
@@ -25,14 +32,14 @@ def solve_maze(labyrinth: str) -> float:
     result = ctypes.string_at(ptr).decode()
     libc.free(ptr)
 
-    elapsed_ms = (end - start).total_seconds() * 1000  # ✅ correto
+    elapsed_ms = (end - start).total_seconds() * 1000
     print(f"Tempo: {elapsed_ms:.3f} ms")
 
-    # Salvar em output.txt
+    # output.txt
     with open("output.txt", "w") as f:
         f.write(result)
 
-    # Gerar lista de coordenadas do caminho com '.'
+    # output.json
     caminho = []
     linhas = result.strip().split("\n")
     for i, linha in enumerate(linhas):
@@ -40,7 +47,6 @@ def solve_maze(labyrinth: str) -> float:
             if c == ".":
                 caminho.append({"x": i, "y": j})
 
-    # Salvar em output.json
     with open("output.json", "w") as f:
         json.dump({"Path": caminho}, f, indent=2)
 
