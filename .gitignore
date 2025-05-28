@@ -1,0 +1,36 @@
+# Arquivos binários e bibliotecas compiladas
+labirinto
+liblabirinto.so
+
+# Diretórios de saída
+/outputs/
+/inputs/
+
+# Arquivos de saída gerados pelo programa
+*.txt
+*.json
+
+# Arquivos temporários do sistema
+*.o
+*.out
+*.log
+*.tmp
+
+# Arquivos de backup do editor
+*~
+*.swp
+
+# VSCode config (se aplicável)
+.vscode/
+
+# PyCache (caso use Python)
+__pycache__/
+*.pyc
+
+# Ambientes virtuais Python
+.venv/
+env/
+venv/
+
+# Arquivos do macOS
+.DS_Store
