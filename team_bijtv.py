@@ -2,7 +2,7 @@ import ctypes
 
 from datetime import datetime
 import json
-import platform
+# import platform
 
 # Comando para compilar o C:
 # gcc -O2 -fPIC -shared -o liblabyrinth.so labyrinth.c
@@ -11,10 +11,10 @@ lib = ctypes.CDLL("./liblabyrinth.so")
 lib.solve_maze_from_string.argtypes = [ctypes.c_char_p]
 lib.solve_maze_from_string.restype = ctypes.c_void_p
 
-if platform.system() == "Darwin": # macOS
-    libc = ctypes.CDLL("libc.dylib")
-else:                             # Linux
-    libc = ctypes.CDLL("libc.so.6") 
+# if platform.system() == "Darwin": # macOS
+libc = ctypes.CDLL("libc.dylib")
+# else:                             # Linux
+#     libc = ctypes.CDLL("libc.so.6") 
     
 libc.free.argtypes = [ctypes.c_void_p]
 
